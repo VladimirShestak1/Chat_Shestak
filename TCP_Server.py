@@ -31,14 +31,13 @@ while True:
         else:
             response_temp = "Сlient {}".format(r)
             data = r.recv(2048)
+            data = data.decode("utf-8")
             if data:
-                data = data.decode("utf-8")
                 respons = response_temp + data
                 MESSAGES[r.fileno()] = respons
                 FOR_WRITE.append(r)
             else:
                 print('Client disconnected ...')
-
                 if r in FOR_WRITE:
                     FOR_WRITE.remove(r)
 
