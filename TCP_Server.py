@@ -16,7 +16,7 @@ srv_sock.listen(10)
 srv_sock.setblocking(False)
 FOR_READ.append(srv_sock)
 
-MESSAGES = {}   #сообщения (ключ - сокет клиента)
+MESSAGES = {}   #сообщения (ключ - файловый дескриптор сокета клиента)
 
 while True:
     R, W, ERR = select.select(FOR_READ, FOR_WRITE, FOR_READ)
@@ -28,26 +28,14 @@ while True:
             FOR_READ.append(client)
             print("Client {} connected".format(addr))
 
-            for clnt in FOR_WRITE:
-                mess = "Client {} connected".format(addr)
-                clnt.send(mess.encode("utf-8"))
-
         else:
+            response_temp = "Сlient {}".format(r)
             data = r.recv(2048)
             if data:
                 data = data.decode("utf-8")
-
-                if MESSAGES.get(r, None):
-                    MESSAGES[r].append(data)
-                    for clnt in FOR_WRITE:
-                        clnt.send(data.encode("utf-8"))
-
-                else:
-                    MESSAGES[r] = [data]
-
-                if r not in FOR_WRITE:
-                    FOR_WRITE.append(r)
-
+                respons = response_temp + data
+                MESSAGES[r.fileno()] = respons
+                FOR_WRITE.append(r)
             else:
                 print('Client disconnected ...')
 
@@ -56,18 +44,11 @@ while True:
 
                 FOR_READ.remove(r)
                 r.close()
-                del MESSAGES[r]
+                del MESSAGES[r.fileno()]
 
-    for r in W:
-        message = MESSAGES.get(r, None)
-
-        if len(message):
-            temp_resp = message.pop(0).encode('utf-8')
-
-            for r in R:
-                r.send(temp_resp)
-        else:
-            FOR_WRITE.remove(r)
+    for w in W:
+        data = MESSAGES[w.fileno()]
+        w.send(data.encode("utf-8"))
 
     for r in ERR:      # ошибка
         print('Ошибка, клиент отключился...')
